@@ -1,0 +1,8 @@
+{
+  "name": "nix-yarn-cli",
+  "packageManager": "yarn@4.0.0-rc.53",
+  "type": "module",
+  "dependencies": {
+    "@yarnpkg/core": "^4.0.0-rc.53"
+  }
+}
