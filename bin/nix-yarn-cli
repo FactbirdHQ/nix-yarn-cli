@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+const { tgzToZip } = require("../lib/cli");
+
+tgzToZip({ name: process.argv[2], input: process.argv[3], output: process.argv[4] })
