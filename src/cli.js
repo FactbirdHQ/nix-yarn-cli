@@ -1,4 +1,4 @@
-const { tgzUtils } = require("@yarnpkg/core");
+const { tgzUtils, structUtils } = require("@yarnpkg/core");
 const fs = require("fs");
 
 const tgzToZip = async ({ name, input, output }) => {
@@ -8,4 +8,8 @@ const tgzToZip = async ({ name, input, output }) => {
   fs.writeFileSync(output, zip.getBufferAndClose())
 }
 
-module.exports = { tgzToZip };
+const getLocatorHash = ({ locator }) => {
+  console.log(structUtils.parseLocator(locator).locatorHash);
+}
+
+module.exports = { tgzToZip, getLocatorHash };
