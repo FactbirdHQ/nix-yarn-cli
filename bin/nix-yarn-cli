@@ -3,7 +3,7 @@ const { tgzToZip, getLocatorHash } = require("../lib/cli");
 
 switch (process.argv?.[2]) {
   case "tgz-to-zip":
-    tgzToZip({ name: process.argv[3], input: process.argv[4], output: process.argv[5] })
+    tgzToZip({ name: process.argv[3], input: process.argv[4], output: process.argv[5], compressionLevel: process.argv[6] ?? '0' })
     return;
   case "locator-hash":
     getLocatorHash({ locator: process.argv[3] });
