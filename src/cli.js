@@ -4,7 +4,7 @@ const fs = require("fs");
 const tgzToZip = async ({ name, input, output, compressionLevel }) => {
   console.log({ name, input, output, compressionLevel })
   const tgzBuffer = fs.readFileSync(input);
-  const zip = await tgzUtils.convertToZip(tgzBuffer, { stripComponents: 1, prefixPath: `node_modules/${name}`, configuration: { compressionLevel } });
+  const zip = await tgzUtils.convertToZip(tgzBuffer, { stripComponents: 1, prefixPath: `node_modules/${name}`, compressionLevel });
   fs.writeFileSync(output, zip.getBufferAndClose())
 }
 
