@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 const { tgzToZip, getLocatorHash } = require("../lib/cli");
-
 switch (process.argv?.[2]) {
   case "tgz-to-zip":
     tgzToZip({ name: process.argv[3], input: process.argv[4], output: process.argv[5], compressionLevel: process.argv[6] ?? '0' })
@@ -10,6 +9,6 @@ switch (process.argv?.[2]) {
     return;
   default:
     console.log("Usage:");
-    console.log(process.argv[1] + " tgz-to-zip <packge-name> <input-tgz> <output-zip>");
+    console.log(process.argv[1] + " tgz-to-zip <package-name> <input-tgz> <output-zip>");
     console.log(process.argv[1] + " locator-hash <package-locator>");
 }

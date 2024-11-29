@@ -1,3 +1,6 @@
 {pkgs, ...}: {
-  packages = [pkgs.yarn];
+  packages = with pkgs.nodePackages; [
+    nodejs
+    yarn
+  ];
 }

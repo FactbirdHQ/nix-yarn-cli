@@ -2,7 +2,7 @@
   "name": "nix-yarn-cli",
   "packageManager": "yarn@4.1.1",
   "dependencies": {
-    "@yarnpkg/core": "^4.0.3"
+    "@yarnpkg/core": "^4.1.6"
   },
   "scripts": {
     "build": "mkdir -p lib && cp src/cli.js lib"
