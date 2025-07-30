@@ -1,0 +1,200 @@
+_: {
+  packages.mkYarnProject = {
+    pkgs,
+    lib,
+  }: opts: let
+    filteredSrc = lib.fileset.fileFilter (file:
+      lib.any (regex: builtins.match regex file.name != null) [
+        ".*.(t|j)sx?"
+        "justfile"
+        ".*.gql"
+        ".*.graphqls"
+        ".*.json"
+        ".*.xlsx"
+        ".*.xml"
+        ".*.svg"
+        ".*.gif"
+        ".*.html"
+        ".*.mp3"
+        ".*.wsdl"
+        ".*.pem"
+        ".*.ts.snap"
+      ])
+    opts.src;
+
+    # Create attribute set with paths to all Nodejs projects
+    rootPackageJson = builtins.fromJSON (builtins.readFile (opts.rootSrc + "/package.json"));
+    projectPackageJson =
+      if builtins.hasAttr "packageJson" opts
+      then builtins.fromJSON (builtins.readFile opts.packageJson)
+      else if builtins.hasAttr "src" opts
+      then builtins.fromJSON (builtins.readFile (opts.src + "/package.json"))
+      else rootPackageJson;
+    inherit (rootPackageJson) workspaces;
+    workspacePaths = builtins.listToAttrs (map (workspace: {
+        inherit (builtins.fromJSON (builtins.readFile "${opts.rootSrc}/${workspace}/package.json")) name;
+        value = workspace;
+      })
+      workspaces);
+
+    # Helper function to get workspace dependencies
+    getWorkspaceDependencies = path: let
+      packageJson = builtins.fromJSON (builtins.readFile path);
+      dependencies =
+        if builtins.hasAttr "dependencies" packageJson
+        then packageJson.dependencies
+        else {};
+      devDependencies =
+        if builtins.hasAttr "devDependencies" packageJson
+        then packageJson.devDependencies
+        else {};
+      allDependencies = dependencies // devDependencies;
+      workspaceDependencies = builtins.filter (dep: allDependencies.${dep} == "workspace:^") (builtins.attrNames allDependencies);
+    in
+      map (dep: workspacePaths."${dep}") workspaceDependencies;
+
+    # Recursively collect all workspace dependencies
+    collectWorkspaceDependencies = curDependencies: path: let
+      directDependencies = getWorkspaceDependencies (opts.rootSrc + "/${path}/package.json");
+      newDeps = builtins.filter (path: !(builtins.elem path curDependencies)) directDependencies;
+      allDependencies = builtins.foldl' collectWorkspaceDependencies (curDependencies ++ directDependencies) newDeps;
+    in
+      lib.unique (directDependencies ++ allDependencies);
+
+    # Create filesets for all workspace (workspace:^) dependencies
+    rootWorkspaceDependencies =
+      if builtins.hasAttr "packageJson" opts
+      then getWorkspaceDependencies opts.packageJson
+      else if builtins.hasAttr "src" opts
+      then getWorkspaceDependencies (opts.src + "/package.json")
+      else [];
+    allWorkspaceDependencies = lib.unique (builtins.foldl' collectWorkspaceDependencies rootWorkspaceDependencies rootWorkspaceDependencies);
+    workspaceDependencyFilesets = map (path: lib.fileset.fileFilter (file: lib.any (regex: builtins.match regex file.name != null) [".*(.(t|j)sx?|json|graphqls|gql)"]) (opts.rootSrc + "/${path}")) allWorkspaceDependencies;
+    workspaceDependencyFilesetsInstall = map (path: lib.fileset.fileFilter (file: lib.any (regex: builtins.match regex file.name != null) ["package\.json"]) (opts.rootSrc + "/${path}")) allWorkspaceDependencies;
+
+    yarnFiles = lib.fileset.fileFilter (file:
+      lib.any (regex: builtins.match regex file.name != null) [
+        "common.just"
+        "tsconfig.json"
+        "tsconfig.ui.json"
+        ".yarnrc.yml"
+        ".pnp.loader.mjs"
+      ])
+    opts.rootSrc;
+
+    yarnInstallFiles = lib.fileset.fileFilter (file:
+      lib.any (regex: builtins.match regex file.name != null) [
+        ".yarnrc.yml"
+        ".pnp.cjs"
+        ".pnp.loader.mjs"
+        "yarn.lock"
+      ])
+    opts.rootSrc;
+
+    yarnDirs = lib.fileset.fileFilter (file:
+      lib.any (regex: builtins.match regex file.name != null) [
+        "yarn-.*.cjs"
+        "aws.js"
+      ]) (opts.rootSrc + "/.yarn");
+
+    installSrc = lib.fileset.toSource {
+      root = opts.rootSrc;
+      fileset = lib.fileset.unions ([
+          yarnInstallFiles
+          yarnDirs
+          (opts.rootSrc + /.yarn/patches)
+        ]
+        ++ workspaceDependencyFilesetsInstall
+        ++ (lib.optional (lib.hasAttr "src" opts) filteredSrc)
+        ++ (lib.optional (lib.hasAttr "fileset" opts) opts.fileset)
+        ++ (lib.optional (lib.hasAttr "packageJson" opts) opts.packageJson));
+    };
+
+    projectSrc = lib.fileset.toSource {
+      root = opts.rootSrc;
+      fileset = lib.fileset.unions ([
+          yarnFiles
+          yarnDirs
+          (opts.rootSrc + /.yarn/patches)
+        ]
+        ++ (lib.optionals (!(lib.hasAttr "ignoreDependencySources" opts)) workspaceDependencyFilesets)
+        ++ (lib.optional (lib.hasAttr "src" opts) filteredSrc)
+        ++ (lib.optional (lib.hasAttr "fileset" opts) opts.fileset)
+        ++ (lib.optional (lib.hasAttr "packageJson" opts) opts.packageJson));
+    };
+
+    focusedProjectRoot = builtins.toJSON (rootPackageJson
+      // {
+        workspaces = ["modules/transpilation" workspacePaths."${projectPackageJson.name}"] ++ allWorkspaceDependencies;
+        devDependencies = [];
+      });
+
+    focused-yarn-install = pkgs.stdenvNoCC.mkDerivation {
+      name = "${lib.replaceStrings ["@"] [""] projectPackageJson.name}-focused-yarn-install";
+      buildInputs = [opts.yarn-wrapper];
+      src = installSrc;
+
+      configurePhase = ''
+        cp --reflink=auto --recursive ${opts.yarn-cache} .yarn/cache
+        chmod -R 755 .yarn/cache
+        echo '${focusedProjectRoot}' > package.json
+
+        export HOME="$TMP"
+      '';
+
+      buildPhase = ''
+        pushd ${workspacePaths."${projectPackageJson.name}"}
+        yarn install
+        popd
+      '';
+
+      installPhase = ''
+        mkdir -p $out/.yarn
+        cp -R .yarn/cache $out/.yarn
+        if [ -d .yarn/unplugged ]; then
+          cp -R .yarn/unplugged $out/.yarn
+        fi
+        cp yarn.lock $out
+        cp .pnp.cjs $out
+        cp .pnp.loader.mjs $out
+      '';
+
+      dontFixup = true;
+    };
+  in
+    pkgs.stdenvNoCC.mkDerivation ({
+        buildInputs = [pkgs.just opts.yarn-wrapper pkgs.typeshare pkgs.jq] ++ (opts.buildInputs or []);
+        src = projectSrc;
+        configurePhase = ''
+          echo '${focusedProjectRoot}' > package.json
+          cp --reflink=auto --recursive ${focused-yarn-install}/.yarn/cache .yarn
+          if [ -d ${focused-yarn-install}/.yarn/unplugged ]; then
+            cp --reflink=auto --recursive ${focused-yarn-install}/.yarn/unplugged .yarn
+          fi
+          cp --reflink=auto --recursive ${focused-yarn-install}/yarn.lock .
+          cp --reflink=auto --recursive ${focused-yarn-install}/.pnp.cjs .
+          cp --reflink=auto --recursive ${focused-yarn-install}/.pnp.loader.mjs .
+
+          export NODE_OPTIONS="${opts.node-options}"
+          export AWS_XRAY_CONTEXT_MISSING="IGNORE_ERROR"
+          export HOME="$TMP"
+        '';
+        installPhase = ''
+          if [ -d .webpack ]; then
+            mv .webpack $out
+          elif [ -d dist ]; then
+            mv dist $out
+          elif [ -d storybook-static ]; then
+            mv storybook-static $out
+          else
+            mkdir -p $out
+          fi
+        '';
+        dontFixup = true;
+        doCheck = true;
+        checkPhase = ''
+          yarn tsc --noEmit
+        '';
+      }
+      // (builtins.removeAttrs opts ["buildInputs" "ignoreDependencySources" "src" "rootSrc" "fileset" "yarn-wrapper" "yarn-cache"]));
+}
