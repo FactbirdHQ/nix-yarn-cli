@@ -6,6 +6,7 @@ _: {
   }: {
     token,
     src,
+    yarn-wrapper,
   }: let
     # TODO: Replace with https://github.com/NixOS/nix/pull/7340
     jsonFromYaml = yaml:
@@ -273,7 +274,7 @@ _: {
         dep.checksum;
       archive = pkgs.stdenv.mkDerivation {
         name = "${nixName}-${rev}.zip";
-        buildInputs = [pkgs.gnutar pkgs.yarn-wrapper];
+        buildInputs = [pkgs.gnutar yarn-wrapper];
         unpackPhase = ''
           cp -ra ${git} ${repo}-${rev}
           (
