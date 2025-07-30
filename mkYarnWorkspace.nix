@@ -23,11 +23,11 @@ _: {
     cache = mkYarnCache {inherit token src yarn;};
     unplugged = mkYarnUnplugged {inherit src yarn cache;};
     run = mkYarnRun {inherit yarn cache unplugged preRun;} // nodeOptions;
-    mkProject = {src}:
-      mkYarnProject {
-        inherit yarn cache src;
-        rootSrc = opts.src;
-      }
-      // nodeOptions;
+    mkProject = projOpts:
+      mkYarnProject ({
+          inherit yarn cache;
+          rootSrc = opts.src;
+        }
+        // nodeOptions // projOpts);
   };
 }
