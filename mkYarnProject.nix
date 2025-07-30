@@ -201,5 +201,5 @@ _: {
           yarn tsc --noEmit
         '';
       }
-      // (builtins.removeAttrs opts ["buildInputs" "ignoreDependencySources" "src" "rootSrc" "fileset" "wrapper" "cache" "nodeOptions"]));
+      // (builtins.removeAttrs opts ["buildInputs" "ignoreDependencySources" "src" "rootSrc" "fileset" "yarn" "cache" "nodeOptions"]));
 }
