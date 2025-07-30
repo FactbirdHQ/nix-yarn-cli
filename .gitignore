@@ -11,9 +11,9 @@ lib/*
 *.zip
 *.tgz
 
-# Devenv
+# Nix
 .devenv*
-devenv.local.nix
+result
 
 # direnv
 .direnv
