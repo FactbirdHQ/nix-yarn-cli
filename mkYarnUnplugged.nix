@@ -2,7 +2,7 @@ _: {
   packages.mkYarnUnplugged = {
     pkgs,
     lib,
-  }: {src, yarn-cache, yarn-wrapper}: let
+  }: {src, cache, wrapper}: let
     findFolders = path:
       builtins.foldl' (acc: elem: let
         prefix =
@@ -35,17 +35,16 @@ _: {
   in
     pkgs.stdenvNoCC.mkDerivation {
       name = "yarn-unplugged";
-      buildInputs = [yarn-wrapper];
       src = yarnSrc;
 
       configurePhase = ''
-        cp --reflink=auto --recursive ${yarn-cache} .yarn/cache
+        cp --reflink=auto --recursive ${cache} .yarn/cache
 
         export HOME="$TMP"
       '';
 
       buildPhase = ''
-        yarn install --immutable --immutable-cache
+        ${wrapper}/bin/yarn install --immutable --immutable-cache
 
         cp --reflink=auto --recursive .yarn/unplugged $out
       '';

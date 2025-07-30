@@ -2,7 +2,12 @@ _: {
   packages.mkYarnProject = {
     pkgs,
     lib,
-  }: opts: let
+  }: {
+    wrapper,
+    cache,
+    rootSrc,
+    ...
+  } @ opts: let
     filteredSrc = lib.fileset.fileFilter (file:
       lib.any (regex: builtins.match regex file.name != null) [
         ".*.(t|j)sx?"
@@ -23,7 +28,7 @@ _: {
     opts.src;
 
     # Create attribute set with paths to all Nodejs projects
-    rootPackageJson = builtins.fromJSON (builtins.readFile (opts.rootSrc + "/package.json"));
+    rootPackageJson = builtins.fromJSON (builtins.readFile (rootSrc + "/package.json"));
     projectPackageJson =
       if builtins.hasAttr "packageJson" opts
       then builtins.fromJSON (builtins.readFile opts.packageJson)
@@ -32,7 +37,7 @@ _: {
       else rootPackageJson;
     inherit (rootPackageJson) workspaces;
     workspacePaths = builtins.listToAttrs (map (workspace: {
-        inherit (builtins.fromJSON (builtins.readFile "${opts.rootSrc}/${workspace}/package.json")) name;
+        inherit (builtins.fromJSON (builtins.readFile "${rootSrc}/${workspace}/package.json")) name;
         value = workspace;
       })
       workspaces);
@@ -55,7 +60,7 @@ _: {
 
     # Recursively collect all workspace dependencies
     collectWorkspaceDependencies = curDependencies: path: let
-      directDependencies = getWorkspaceDependencies (opts.rootSrc + "/${path}/package.json");
+      directDependencies = getWorkspaceDependencies (rootSrc + "/${path}/package.json");
       newDeps = builtins.filter (path: !(builtins.elem path curDependencies)) directDependencies;
       allDependencies = builtins.foldl' collectWorkspaceDependencies (curDependencies ++ directDependencies) newDeps;
     in
@@ -69,8 +74,8 @@ _: {
       then getWorkspaceDependencies (opts.src + "/package.json")
       else [];
     allWorkspaceDependencies = lib.unique (builtins.foldl' collectWorkspaceDependencies rootWorkspaceDependencies rootWorkspaceDependencies);
-    workspaceDependencyFilesets = map (path: lib.fileset.fileFilter (file: lib.any (regex: builtins.match regex file.name != null) [".*(.(t|j)sx?|json|graphqls|gql)"]) (opts.rootSrc + "/${path}")) allWorkspaceDependencies;
-    workspaceDependencyFilesetsInstall = map (path: lib.fileset.fileFilter (file: lib.any (regex: builtins.match regex file.name != null) ["package\.json"]) (opts.rootSrc + "/${path}")) allWorkspaceDependencies;
+    workspaceDependencyFilesets = map (path: lib.fileset.fileFilter (file: lib.any (regex: builtins.match regex file.name != null) [".*(.(t|j)sx?|json|graphqls|gql)"]) (rootSrc + "/${path}")) allWorkspaceDependencies;
+    workspaceDependencyFilesetsInstall = map (path: lib.fileset.fileFilter (file: lib.any (regex: builtins.match regex file.name != null) ["package\.json"]) (rootSrc + "/${path}")) allWorkspaceDependencies;
 
     yarnFiles = lib.fileset.fileFilter (file:
       lib.any (regex: builtins.match regex file.name != null) [
@@ -80,7 +85,7 @@ _: {
         ".yarnrc.yml"
         ".pnp.loader.mjs"
       ])
-    opts.rootSrc;
+    rootSrc;
 
     yarnInstallFiles = lib.fileset.fileFilter (file:
       lib.any (regex: builtins.match regex file.name != null) [
@@ -89,20 +94,15 @@ _: {
         ".pnp.loader.mjs"
         "yarn.lock"
       ])
-    opts.rootSrc;
-
-    yarnDirs = lib.fileset.fileFilter (file:
-      lib.any (regex: builtins.match regex file.name != null) [
-        "yarn-.*.cjs"
-        "aws.js"
-      ]) (opts.rootSrc + "/.yarn");
+    rootSrc;
 
     installSrc = lib.fileset.toSource {
-      root = opts.rootSrc;
+      root = rootSrc;
       fileset = lib.fileset.unions ([
           yarnInstallFiles
-          yarnDirs
-          (opts.rootSrc + /.yarn/patches)
+          (rootSrc + /.yarn/plugins)
+          (rootSrc + /.yarn/releases)
+          (rootSrc + /.yarn/patches)
         ]
         ++ workspaceDependencyFilesetsInstall
         ++ (lib.optional (lib.hasAttr "src" opts) filteredSrc)
@@ -111,11 +111,12 @@ _: {
     };
 
     projectSrc = lib.fileset.toSource {
-      root = opts.rootSrc;
+      root = rootSrc;
       fileset = lib.fileset.unions ([
           yarnFiles
-          yarnDirs
-          (opts.rootSrc + /.yarn/patches)
+          (rootSrc + /.yarn/plugins)
+          (rootSrc + /.yarn/releases)
+          (rootSrc + /.yarn/patches)
         ]
         ++ (lib.optionals (!(lib.hasAttr "ignoreDependencySources" opts)) workspaceDependencyFilesets)
         ++ (lib.optional (lib.hasAttr "src" opts) filteredSrc)
@@ -131,11 +132,11 @@ _: {
 
     focused-yarn-install = pkgs.stdenvNoCC.mkDerivation {
       name = "${lib.replaceStrings ["@"] [""] projectPackageJson.name}-focused-yarn-install";
-      buildInputs = [opts.yarn-wrapper];
+      buildInputs = [wrapper];
       src = installSrc;
 
       configurePhase = ''
-        cp --reflink=auto --recursive ${opts.yarn-cache} .yarn/cache
+        cp --reflink=auto --recursive ${cache} .yarn/cache
         chmod -R 755 .yarn/cache
         echo '${focusedProjectRoot}' > package.json
 
@@ -163,7 +164,7 @@ _: {
     };
   in
     pkgs.stdenvNoCC.mkDerivation ({
-        buildInputs = [pkgs.just opts.yarn-wrapper pkgs.typeshare pkgs.jq] ++ (opts.buildInputs or []);
+        buildInputs = [wrapper pkgs.just pkgs.typeshare pkgs.jq] ++ (opts.buildInputs or []);
         src = projectSrc;
         configurePhase = ''
           echo '${focusedProjectRoot}' > package.json
@@ -175,8 +176,7 @@ _: {
           cp --reflink=auto --recursive ${focused-yarn-install}/.pnp.cjs .
           cp --reflink=auto --recursive ${focused-yarn-install}/.pnp.loader.mjs .
 
-          export NODE_OPTIONS="${opts.node-options}"
-          export AWS_XRAY_CONTEXT_MISSING="IGNORE_ERROR"
+          export NODE_OPTIONS="${opts.nodeOptions}"
           export HOME="$TMP"
         '';
         installPhase = ''
@@ -196,5 +196,5 @@ _: {
           yarn tsc --noEmit
         '';
       }
-      // (builtins.removeAttrs opts ["buildInputs" "ignoreDependencySources" "src" "rootSrc" "fileset" "yarn-wrapper" "yarn-cache"]));
+      // (builtins.removeAttrs opts ["buildInputs" "ignoreDependencySources" "src" "rootSrc" "fileset" "wrapper" "cache" "nodeOptions"]));
 }

@@ -1,28 +1,29 @@
 _: {
   packages.mkYarnRun = {writeShellScriptBin}: {
-    yarn-cache,
-    yarn-unplugged,
-    yarn-wrapper,
+    cache,
+    unplugged,
+    wrapper,
     preRun,
+    nodeOptions
   }:
     writeShellScriptBin "yarn-run" ''
       # Check and symlink cache directory
-      CACHE_PATH=$(${yarn-wrapper}/bin/yarn config get cacheFolder)
+      CACHE_PATH=$(${wrapper}/bin/yarn config get cacheFolder)
       if [ ! -e $CACHE_PATH ]; then
-        cp --reflink=auto --recursive ${yarn-cache} $CACHE_PATH
+        cp --reflink=auto --recursive ${cache} $CACHE_PATH
       fi
 
       # Check and symlink unplugged directory
-      UNPLUGGED_PATH=$(${yarn-wrapper}/bin/yarn config get pnpUnpluggedFolder)
+      UNPLUGGED_PATH=$(${wrapper}/bin/yarn config get pnpUnpluggedFolder)
       if [ ! -e $UNPLUGGED_PATH ]; then
-        cp --reflink=auto --recursive ${yarn-unplugged} $UNPLUGGED_PATH
+        cp --reflink=auto --recursive ${unplugged} $UNPLUGGED_PATH
       fi
 
       WORKSPACE_ROOT=$(dirname $(dirname $UNPLUGGED_PATH))
-      export NODE_OPTIONS="--experimental-transform-types --experimental-import-meta-resolve --import $WORKSPACE_ROOT/modules/transpilation/index.js"
+      export NODE_OPTIONS="${nodeOptions}"
 
       ${preRun}
 
-      ${yarn-wrapper}/bin/yarn "$@"
+      ${wrapper}/bin/yarn "$@"
     '';
 }
