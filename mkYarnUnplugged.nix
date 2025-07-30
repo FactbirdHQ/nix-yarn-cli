@@ -2,7 +2,11 @@ _: {
   packages.mkYarnUnplugged = {
     pkgs,
     lib,
-  }: {src, cache, wrapper}: let
+  }: {
+    src,
+    cache,
+    yarn,
+  }: let
     findFolders = path:
       builtins.foldl' (acc: elem: let
         prefix =
@@ -37,6 +41,8 @@ _: {
       name = "yarn-unplugged";
       src = yarnSrc;
 
+      buildInputs = [yarn];
+
       configurePhase = ''
         cp --reflink=auto --recursive ${cache} .yarn/cache
 
@@ -44,7 +50,7 @@ _: {
       '';
 
       buildPhase = ''
-        ${wrapper}/bin/yarn install --immutable --immutable-cache
+        yarn install --immutable --immutable-cache
 
         cp --reflink=auto --recursive .yarn/unplugged $out
       '';

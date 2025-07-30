@@ -3,7 +3,7 @@ _: {
     pkgs,
     lib,
   }: {
-    wrapper,
+    yarn,
     cache,
     rootSrc,
     ...
@@ -132,7 +132,7 @@ _: {
 
     focused-yarn-install = pkgs.stdenvNoCC.mkDerivation {
       name = "${lib.replaceStrings ["@"] [""] projectPackageJson.name}-focused-yarn-install";
-      buildInputs = [wrapper];
+      buildInputs = [yarn];
       src = installSrc;
 
       configurePhase = ''
@@ -162,13 +162,15 @@ _: {
 
       dontFixup = true;
     };
-    setNodeOptions = if (builtins.hasAttr "nodeOptions" opts) then "export NODE_OPTIONS=${opts.nodeOptions}" else ""; 
+    setNodeOptions =
+      if (builtins.hasAttr "nodeOptions" opts)
+      then "export NODE_OPTIONS=${opts.nodeOptions}"
+      else "";
   in
     pkgs.stdenvNoCC.mkDerivation ({
-        buildInputs = [wrapper pkgs.just pkgs.typeshare pkgs.jq] ++ (opts.buildInputs or []);
+        buildInputs = [yarn pkgs.just pkgs.typeshare pkgs.jq] ++ (opts.buildInputs or []);
         src = projectSrc;
-        configurePhase =  
-        ''
+        configurePhase = ''
           echo '${focusedProjectRoot}' > package.json
           cp --reflink=auto --recursive ${focused-yarn-install}/.yarn/cache .yarn
           if [ -d ${focused-yarn-install}/.yarn/unplugged ]; then
@@ -179,7 +181,7 @@ _: {
           cp --reflink=auto --recursive ${focused-yarn-install}/.pnp.loader.mjs .
 
           ${setNodeOptions}
-          
+
           export HOME="$TMP"
         '';
         installPhase = ''

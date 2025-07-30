@@ -1,30 +1,39 @@
 _: {
-  packages.mkYarnRun = {writeShellScriptBin}: {
+  packages.mkYarnRun = {writeShellApplication}: {
     cache,
     unplugged,
-    wrapper,
+    yarn,
     preRun,
     ...
-  } @ opts: let setNodeOptions = if (builtins.hasAttr "nodeOptions" opts) then "export NODE_OPTIONS=${opts.nodeOptions}" else ""; in 
-    writeShellScriptBin "yarn-run" ''
-      # Check and symlink cache directory
-      CACHE_PATH=$(${wrapper}/bin/yarn config get cacheFolder)
-      if [ ! -e $CACHE_PATH ]; then
-        cp --reflink=auto --recursive ${cache} $CACHE_PATH
-      fi
+  } @ opts: let
+    setNodeOptions =
+      if (builtins.hasAttr "nodeOptions" opts)
+      then "export NODE_OPTIONS=${opts.nodeOptions}"
+      else "";
+  in
+    writeShellApplication {
+      name = "yarn-run";
+      runtimeInputs = [yarn];
+      text = ''
+        # Check and symlink cache directory
+        CACHE_PATH=$(yarn config get cacheFolder)
+        if [ ! -e $CACHE_PATH ]; then
+          cp --reflink=auto --recursive ${cache} $CACHE_PATH
+        fi
 
-      # Check and symlink unplugged directory
-      UNPLUGGED_PATH=$(${wrapper}/bin/yarn config get pnpUnpluggedFolder)
-      if [ ! -e $UNPLUGGED_PATH ]; then
-        cp --reflink=auto --recursive ${unplugged} $UNPLUGGED_PATH
-      fi
+        # Check and symlink unplugged directory
+        UNPLUGGED_PATH=$(yarn config get pnpUnpluggedFolder)
+        if [ ! -e $UNPLUGGED_PATH ]; then
+          cp --reflink=auto --recursive ${unplugged} $UNPLUGGED_PATH
+        fi
 
-      WORKSPACE_ROOT=$(dirname $(dirname $UNPLUGGED_PATH))
-      
-      ${setNodeOptions}
+        WORKSPACE_ROOT=$(dirname $(dirname $UNPLUGGED_PATH))
 
-      ${preRun}
+        ${setNodeOptions}
 
-      ${wrapper}/bin/yarn "$@"
-    '';
+        ${preRun}
+
+        ${yarn}/bin/yarn "$@"
+      '';
+    };
 }
