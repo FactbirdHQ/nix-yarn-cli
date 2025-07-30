@@ -56,6 +56,18 @@
         "type": "github"
       }
     },
+    "env": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-d6xi4mKdjkX2JFicDIv5niSzpyI0m/Hnm8GGAIU04kY=",
+        "type": "file",
+        "url": "file:///dev/null"
+      },
+      "original": {
+        "type": "file",
+        "url": "file:///dev/null"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -218,6 +230,7 @@
     "root": {
       "inputs": {
         "devenv": "devenv",
+        "env": "env",
         "flakelight": "flakelight",
         "nixpkgs": "nixpkgs",
         "systems": "systems"

@@ -28,8 +28,8 @@
         devenv-up = {stdenv}: self.devShells.${stdenv.system}.default.config.procfileScript;
         devenv-test = {stdenv}: self.devShells.${stdenv.system}.default.config.test;
 
-        nix-yarn-cli = {pkgs}: let
-          name = "nix-yarn-cli";
+        yarnix-cli = {pkgs}: let
+          name = "yarnix-cli";
           src = ./.;
           offlineCache = pkgs.stdenv.mkDerivation {
             name = "${name}-offline-cache";
@@ -83,27 +83,25 @@
             meta = with pkgs; {
               description = "Exposes Yarn logic for Nix integration";
               license = lib.licenses.mit;
-              homepage = "https://github.com/FactbirdHQ/nix-yarn-cli";
+              homepage = "https://github.com/FactbirdHQ/yarnix-cli";
               mainProgram = "nix-yarn-cli";
               maintainers = ["noverby"];
             };
           };
       };
 
-      devShells = {
-        default = {pkgs}:
-          devenv.lib.mkShell {
-            inherit inputs pkgs;
-            modules = [
-              {
-                devenv.root = let env = builtins.fromJSON (builtins.readFile inputs.env.outPath); in env.PWD;
-                packages = with pkgs.nodePackages; [
-                  nodejs
-                  yarn
-                ];
-              }
-            ];
-          };
-      };
+      devShells.default = {pkgs}:
+        devenv.lib.mkShell {
+          inherit inputs pkgs;
+          modules = [
+            {
+              devenv.root = let env = builtins.fromJSON (builtins.readFile inputs.env.outPath); in env.PWD;
+              packages = with pkgs.nodePackages; [
+                nodejs
+                yarn
+              ];
+            }
+          ];
+        };
     };
 }

@@ -1,1 +1,1 @@
-# nix-yarn-cli
+# Yarnix
