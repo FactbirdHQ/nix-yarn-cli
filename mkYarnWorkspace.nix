@@ -12,6 +12,7 @@ _: {
     token,
     src,
     preRun,
+    ...
   } @ opts: let
     nodeOptions =
       if (builtins.hasAttr "nodeOptions" opts)
