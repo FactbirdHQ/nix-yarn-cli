@@ -1,9 +1,12 @@
 _: {
-  packages.yarn-cache = {
+  packages.mkYarnCache = {
     pkgs,
     lib,
     ...
-  }: {token, src}: let
+  }: {
+    token,
+    src,
+  }: let
     # TODO: Replace with https://github.com/NixOS/nix/pull/7340
     jsonFromYaml = yaml:
       pkgs.runCommand "fromYAML" {}

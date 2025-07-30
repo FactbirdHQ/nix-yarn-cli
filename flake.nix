@@ -29,7 +29,7 @@
         devenv-test = {stdenv}: self.devShells.${stdenv.system}.default.config.test;
       };
 
-      imports = [./yarnix-cli.nix ./yarn-cache.nix];
+      imports = [./yarnix-cli.nix ./mkYarnCache.nix];
 
       devShells.default = {pkgs}:
         devenv.lib.mkShell {
