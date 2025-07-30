@@ -4,8 +4,8 @@ _: {
     unplugged,
     wrapper,
     preRun,
-    nodeOptions
-  }:
+    ...
+  } @ opts: let setNodeOptions = if (builtins.hasAttr "nodeOptions" opts) then "export NODE_OPTIONS=${opts.nodeOptions}" else ""; in 
     writeShellScriptBin "yarn-run" ''
       # Check and symlink cache directory
       CACHE_PATH=$(${wrapper}/bin/yarn config get cacheFolder)
@@ -20,7 +20,8 @@ _: {
       fi
 
       WORKSPACE_ROOT=$(dirname $(dirname $UNPLUGGED_PATH))
-      export NODE_OPTIONS="${nodeOptions}"
+      
+      ${setNodeOptions}
 
       ${preRun}
 
