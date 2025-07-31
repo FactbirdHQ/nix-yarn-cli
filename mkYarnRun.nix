@@ -8,7 +8,7 @@ _: {
   } @ opts: let
     setNodeOptions =
       if (builtins.hasAttr "nodeOptions" opts)
-      then "export NODE_OPTIONS=${opts.nodeOptions}"
+      then "export NODE_OPTIONS=\"${opts.nodeOptions}\""
       else "";
   in
     writeShellApplication {
