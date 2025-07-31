@@ -180,6 +180,7 @@ _: {
           cp --reflink=auto --recursive ${focused-yarn-install}/.pnp.cjs .
           cp --reflink=auto --recursive ${focused-yarn-install}/.pnp.loader.mjs .
 
+          export WORKSPACE_ROOT="$PWD"
           ${setNodeOptions}
 
           export HOME="$TMP"
