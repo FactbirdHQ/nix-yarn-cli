@@ -100,6 +100,7 @@ _: {
       root = rootSrc;
       fileset = lib.fileset.unions ([
           yarnInstallFiles
+          (rootSrc + /modules/transpilation)
           (rootSrc + /.yarn/plugins)
           (rootSrc + /.yarn/releases)
           (rootSrc + /.yarn/patches)
@@ -114,6 +115,7 @@ _: {
       root = rootSrc;
       fileset = lib.fileset.unions ([
           yarnFiles
+          (rootSrc + /modules/transpilation)
           (rootSrc + /.yarn/plugins)
           (rootSrc + /.yarn/releases)
           (rootSrc + /.yarn/patches)
