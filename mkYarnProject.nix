@@ -136,9 +136,6 @@ _: {
       name = "${lib.replaceStrings ["@"] [""] projectPackageJson.name}-focused-yarn-install";
       buildInputs = [yarn];
       src = installSrc;
-      
-      # Generate drv checksum based on content
-      __contentAddressed = true;
 
       configurePhase = ''
         cp --reflink=auto --recursive ${cache} .yarn/cache
