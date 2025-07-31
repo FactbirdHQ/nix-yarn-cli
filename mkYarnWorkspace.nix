@@ -22,7 +22,7 @@ _: {
     yarn = mkYarnWrapper {inherit nodejs yarnSrc env;};
     cache = mkYarnCache {inherit token src yarn;};
     unplugged = mkYarnUnplugged {inherit src yarn cache;};
-    run = mkYarnRun {inherit yarn cache unplugged preRun;} // nodeOptions;
+    run = mkYarnRun ({inherit yarn cache unplugged preRun;} // nodeOptions);
     mkProject = projOpts:
       mkYarnProject ({
           inherit yarn cache;
